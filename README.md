@@ -2,6 +2,23 @@
 
 A Python client for NASA's Earth Polychromatic Imaging Camera (EPIC) API.
 
+## 🎓 AWS Lambda Demo
+
+This repository includes a complete educational demo showing how to deploy the EPIC API client as a serverless AWS Lambda function:
+
+### **Demo Materials**
+- 📖 `CONSOLE_SETUP_GUIDE.md` - Step-by-step AWS Console setup
+- 🎯 `DEMO_CHECKLIST.md` - Live demo script with timing and talking points
+- 📚 `DEMO_OVERVIEW.md` - Complete learning objectives and takeaways
+- 🛠 `get_image_uri.sh` - Helper to get ECR image URI for Lambda setup
+
+### **Quick Demo Start**
+1. Push code to `main` branch (triggers automatic Docker build)
+2. Run `./get_image_uri.sh` to get the ECR image URI
+3. Follow `DEMO_CHECKLIST.md` for live AWS Console demonstration
+
+Perfect for cloud computing and serverless architecture courses! 🚀
+
 ## Versioning
 
 This package uses automatic versioning based on Git tags:
