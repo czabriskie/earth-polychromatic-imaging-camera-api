@@ -13,8 +13,6 @@ Requirements:
 """
 
 import sys
-from datetime import datetime, timedelta
-from typing import Any
 
 from src.earth_polychromatic_api.service import EpicApiService
 
@@ -276,7 +274,8 @@ def test_model_validation(service: EpicApiService) -> bool:
             print_success("Natural image model validation passed")
             print_info(f"Image ID: {first_image.identifier}")
             print_info(f"Caption: {first_image.caption[:50]}...")
-            print_info(f"Coordinates: lat={first_image.centroid_coordinates.lat:.2f}, lon={first_image.centroid_coordinates.lon:.2f}")
+            coords = first_image.centroid_coordinates
+            print_info(f"Coordinates: lat={coords.lat:.2f}, lon={coords.lon:.2f}")
             success_count += 1
         else:
             print_error("No natural images available for model validation")

@@ -32,8 +32,10 @@ def main() -> int:
     parser.add_argument("--bucket", help="S3 bucket name (optional, for S3 upload)")
     parser.add_argument("--collection", choices=["natural", "enhanced", "aerosol", "cloud"],
                        default="natural", help="Image collection type")
-    parser.add_argument("--local-dir", default="./nasa_epic_images", help="Local download directory")
-    parser.add_argument("--local-only", action="store_true", help="Download locally only (no S3 upload)")
+    parser.add_argument("--local-dir", default="./nasa_epic_images",
+                       help="Local download directory")
+    parser.add_argument("--local-only", action="store_true",
+                       help="Download locally only (no S3 upload)")
     parser.add_argument("--keep-local", action="store_true",
                        help="Keep local files after S3 upload (ignored if --local-only)")
 
@@ -59,7 +61,6 @@ def main() -> int:
 
         if not args.local_only and args.bucket:
             import boto3
-            from botocore.exceptions import ClientError
             s3_client = boto3.client("s3")
             s3_client.head_bucket(Bucket=args.bucket)
 
