@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full git history for hatch-vcs
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -56,6 +58,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full git history for hatch-vcs
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -94,6 +98,8 @@ jobs:
     needs: [lint, test]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full git history for hatch-vcs
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -130,6 +136,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full git history for hatch-vcs
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -188,6 +196,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full git history for hatch-vcs
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -253,6 +263,8 @@ jobs:
     needs: [lint]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full git history for hatch-vcs
 
       - name: Set up Python
         uses: actions/setup-python@v5

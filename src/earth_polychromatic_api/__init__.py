@@ -24,7 +24,7 @@ from .models import (
 from .service import EpicApiService
 
 try:
-    from ._version import version as __version__  # type: ignore[import-untyped]
+    from ._version import version as __version__  # type: ignore[import-untyped,unused-ignore]
 except ImportError:
     # Fallback for development installations without git tags
     __version__ = "0.0.0+unknown"
