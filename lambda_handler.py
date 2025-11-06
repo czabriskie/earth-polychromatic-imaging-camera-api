@@ -57,9 +57,12 @@ def build_command(event: dict[str, Any]) -> list[str]:
     start_date, end_date = get_date_range(event)
 
     cmd = [
-        "python", "epic_s3_downloader.py",
-        "--start-date", start_date,
-        "--end-date", end_date,
+        "python",
+        "epic_s3_downloader.py",
+        "--start-date",
+        start_date,
+        "--end-date",
+        end_date,
     ]
 
     # S3 bucket (required)
@@ -140,10 +143,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "images_downloaded": images_downloaded,
                 "command": " ".join(cmd),
                 "start_time": start_time.isoformat(),
-                "end_time": end_time.isoformat()
+                "end_time": end_time.isoformat(),
             },
             "stdout": result.stdout,
-            "stderr": result.stderr if result.stderr else None
+            "stderr": result.stderr if result.stderr else None,
         }
 
         print(f"Job completed successfully in {duration:.2f} seconds")
@@ -154,10 +157,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     except subprocess.CalledProcessError as e:
         error_details = {
             "exit_code": e.returncode,
-            "command": " ".join(cmd) if 'cmd' in locals() else "Unknown",
+            "command": " ".join(cmd) if "cmd" in locals() else "Unknown",
             "stdout": e.stdout,
             "stderr": e.stderr,
-            "execution_time_seconds": (datetime.now() - start_time).total_seconds()
+            "execution_time_seconds": (datetime.now() - start_time).total_seconds(),
         }
 
         print(f"Command failed with exit code {e.returncode}")
@@ -168,21 +171,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "statusCode": 500,
             "success": False,
             "error": "Command execution failed",
-            "details": error_details
+            "details": error_details,
         }
 
     except Exception as e:
         error_details = {
             "error_type": type(e).__name__,
             "error_message": str(e),
-            "execution_time_seconds": (datetime.now() - start_time).total_seconds()
+            "execution_time_seconds": (datetime.now() - start_time).total_seconds(),
         }
 
         print(f"Job failed with error: {e}")
 
-        return {
-            "statusCode": 500,
-            "success": False,
-            "error": str(e),
-            "details": error_details
-        }
+        return {"statusCode": 500, "success": False, "error": str(e), "details": error_details}
