@@ -1,0 +1,44 @@
+# Exclude unnecessary files but keep .git for hatch-vcs
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+coverage.xml
+.ruff_cache
+.mypy_cache
+*.egg-info
+dist/
+build/
+.venv/
+venv/
+.env
+.env.*
+*.log
+
+# Keep .git for version generation
+# .git
+
+# Documentation and config files not needed in container
+*.md
+!README.md
+.github/
+.gitignore
+.pre-commit-config.yaml
+
+# Test files
+test_datasets/
+src/tests/
+
+# Development scripts
+dev-check.py
+fetch_test_data.py
+verify_endpoints.py
+get_image_uri.sh
+
+# AWS and setup files
+AWS_*.json
+ECR_*.md
+AWS_SETUP.md
+CI_CD_SUMMARY.md
