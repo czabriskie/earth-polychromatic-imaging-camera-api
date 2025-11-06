@@ -215,26 +215,66 @@ jobs:
           aws ecr describe-repositories --repository-names nasa-epic-downloader --region ${{ vars.AWS_REGION }} || \
           aws ecr create-repository --repository-name nasa-epic-downloader --region ${{ vars.AWS_REGION }}
 
+      - name: Determine image tags
+        id: tags
+        run: |
+          echo "GitHub Event: ${{ github.event_name }}"
+          echo "GitHub Ref: ${{ github.ref }}"
+          echo "GitHub Ref Name: ${{ github.ref_name }}"
+          echo "GitHub SHA: ${{ github.sha }}"
+          
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            # For releases, use the release tag (github.ref_name gives us the tag without refs/tags/)
+            RELEASE_TAG="${{ github.ref_name }}"
+            echo "primary_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "🏷️ Release detected: Using tag '${RELEASE_TAG}'"
+            echo "📦 Will create ECR tags: ${RELEASE_TAG} and latest"
+          else
+            # For main branch pushes, use commit SHA (first 12 characters for readability)
+            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-12)
+            echo "primary_tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "🔨 Main branch build: Using short SHA '${SHORT_SHA}'"
+            echo "📦 Will create ECR tags: ${SHORT_SHA} and latest"
+          fi
+
       - name: Build, tag, and push Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: nasa-epic-downloader
-          IMAGE_TAG: ${{ github.sha }}
+          PRIMARY_TAG: ${{ steps.tags.outputs.primary_tag }}
+          IS_RELEASE: ${{ steps.tags.outputs.is_release }}
         run: |
-          # Build the Docker image
-          docker build -f Dockerfile.lambda -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker build -f Dockerfile.lambda -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
-
-          # Push both tagged and latest versions
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          # Build the Docker image with primary tag
+          docker build -f Dockerfile.lambda -t $ECR_REGISTRY/$ECR_REPOSITORY:$PRIMARY_TAG .
+          
+          # Always build and tag as 'latest'
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$PRIMARY_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          
+          # Push primary tag
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$PRIMARY_TAG
+          
+          # Push latest tag
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-          # Output the image URI for use in console setup
+          # Output the image URIs
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🎯 LAMBDA IMAGE URI (copy this for console setup):"
-          echo "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          if [[ "$IS_RELEASE" == "true" ]]; then
+            echo "🎯 RELEASE IMAGE URI (copy this for console setup):"
+            echo "$ECR_REGISTRY/$ECR_REPOSITORY:$PRIMARY_TAG"
+            echo ""
+            echo "📦 Latest Image URI:"
+            echo "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+            echo ""
+            echo "✨ Release tag: $PRIMARY_TAG"
+          else
+            echo "🎯 LAMBDA IMAGE URI (copy this for console setup):"
+            echo "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+            echo ""
+            echo "📝 Development build: $ECR_REGISTRY/$ECR_REPOSITORY:$PRIMARY_TAG"
+          fi
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "📝 Tagged version: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
       - name: Set image lifecycle policy
         run: |
@@ -244,7 +284,35 @@ jobs:
               "rules": [
                 {
                   "rulePriority": 1,
-                  "description": "Keep last 10 images",
+                  "description": "Keep all release tags (semantic versioning)",
+                  "selection": {
+                    "tagStatus": "tagged",
+                    "tagPrefixList": ["v", "1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9.", "0."],
+                    "countType": "sinceImagePushed",
+                    "countUnit": "days",
+                    "countNumber": 3650
+                  },
+                  "action": {
+                    "type": "expire"
+                  }
+                },
+                {
+                  "rulePriority": 2,
+                  "description": "Keep latest tag forever",
+                  "selection": {
+                    "tagStatus": "tagged",
+                    "tagPrefixList": ["latest"],
+                    "countType": "sinceImagePushed",
+                    "countUnit": "days",
+                    "countNumber": 3650
+                  },
+                  "action": {
+                    "type": "expire"
+                  }
+                },
+                {
+                  "rulePriority": 3,
+                  "description": "Keep last 10 development builds (SHA/commit tags)",
                   "selection": {
                     "tagStatus": "tagged",
                     "countType": "imageCountMoreThan",
