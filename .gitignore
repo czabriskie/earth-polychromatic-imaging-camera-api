@@ -179,3 +179,4 @@ safety-report.json
 src/earth_polychromatic_api/_version.py
 
 .DS_Store
+nasa_epic_images/*
