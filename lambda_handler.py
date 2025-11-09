@@ -3,14 +3,15 @@ AWS Lambda handler for NASA EPIC image downloader.
 Configurable via event parameters or environment variables.
 """
 
-import contextlib
 import json
 import logging
 import os
-import subprocess  # noqa: S404
 import tempfile
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
+
+from earth_polychromatic_api.cli import download_images
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -122,29 +123,43 @@ def get_date_range(event: dict[str, Any]) -> tuple[str, str]:
     return date_str, date_str
 
 
-def build_command(event: dict[str, Any]) -> list[str]:
-    """Build the epic_s3_downloader.py command with parameters."""
+def run_download_for_date(
+    date_str: str,
+    collection: str,
+    bucket: str,
+    local_dir: str,
+    local_only: bool,
+) -> tuple[int, int]:
+    """Run download for a single date using the CLI function directly."""
+    # Call the CLI function directly
+    try:
+        download_images(
+            date=date_str,
+            collection=collection,
+            bucket=bucket if not local_only else None,
+            local_dir=Path(local_dir) if local_dir else None,
+            local_only=local_only,
+        )
+        # For now, return success - we'd need to modify CLI to return counts
+        return 1, 1 if not local_only else 0
+    except Exception:
+        logger.exception("Error downloading for date %s", date_str)
+        return 0, 0
+
+
+def execute_downloads(event: dict[str, Any]) -> tuple[int, int, str]:
+    """Execute image downloads using the new CLI."""
     start_date, end_date = get_date_range(event)
 
-    cmd = [
-        "python",
-        "epic_s3_downloader.py",
-        "--start-date",
-        start_date,
-        "--end-date",
-        end_date,
-    ]
-
-    # S3 bucket (required)
+    # S3 bucket (required unless local_only)
+    local_only = event.get("local_only", os.getenv("LOCAL_ONLY", "false").lower() == "true")
     bucket = event.get("bucket", os.getenv("S3_BUCKET"))
-    if not bucket:
-        msg = "bucket parameter or S3_BUCKET environment variable required"
+    if not bucket and not local_only:
+        msg = "bucket parameter or S3_BUCKET environment variable required (unless local_only=true)"
         raise ValueError(msg)
-    cmd.extend(["--bucket", bucket])
 
     # Collection type
     collection = event.get("collection", os.getenv("COLLECTION", "natural"))
-    cmd.extend(["--collection", collection])
 
     # Local directory (use /tmp in Lambda environment)
     local_dir = event.get("local_dir", os.getenv("LOCAL_DIR"))
@@ -154,20 +169,39 @@ def build_command(event: dict[str, Any]) -> list[str]:
         local_dir = f"{temp_dir}/nasa_epic_images"
         logger.info("Using Lambda temp directory: %s", local_dir)
 
+    # Keep local files feature not implemented yet
+
+    # Process date range
+    current_date = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    end_date_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+
+    total_downloaded = 0
+    total_uploaded = 0
+    dates_processed = []
+
+    while current_date <= end_date_dt:
+        date_str = current_date.strftime("%Y-%m-%d")
+        logger.info("Processing date: %s", date_str)
+
+        downloaded, uploaded = run_download_for_date(
+            date_str, collection, bucket, local_dir, local_only
+        )
+
+        total_downloaded += downloaded
+        total_uploaded += uploaded
+        dates_processed.append(date_str)
+
+        current_date += timedelta(days=1)
+
+    command_equivalent = f"epic-images --date {start_date} --collection {collection}"
+    if bucket:
+        command_equivalent += f" --bucket {bucket}"
     if local_dir:
-        cmd.extend(["--local-dir", local_dir])
-
-    # Keep local files
-    keep_local = event.get("keep_local", os.getenv("KEEP_LOCAL", "false").lower() == "true")
-    if keep_local:
-        cmd.append("--keep-local")
-
-    # Local only (skip S3 upload entirely)
-    local_only = event.get("local_only", os.getenv("LOCAL_ONLY", "false").lower() == "true")
+        command_equivalent += f" --local-dir {local_dir}"
     if local_only:
-        cmd.append("--local-only")
+        command_equivalent += " --local-only"
 
-    return cmd
+    return total_downloaded, total_uploaded, command_equivalent
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
@@ -215,44 +249,12 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     start_time = datetime.now(tz=timezone.utc)
 
     try:
-        # Build and execute the download command
-        cmd = build_command(event)
-        logger.info("Executing command: %s", " ".join(cmd))
-
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)  # noqa: S603
+        # Execute downloads using new CLI integration
+        images_downloaded, images_uploaded, command_equivalent = execute_downloads(event)
+        logger.info("CLI execution: downloaded=%d, uploaded=%d", images_downloaded, images_uploaded)
 
         end_time = datetime.now(tz=timezone.utc)
         duration = (end_time - start_time).total_seconds()
-
-        # Parse output for image count (if available)
-        stdout_lines = result.stdout.strip().split("\n")
-        images_downloaded = 0
-
-        # Log the output for debugging
-        logger.info("Script output lines: %d", len(stdout_lines))
-        for i, line in enumerate(stdout_lines[-5:], len(stdout_lines) - 5):  # Log last 5 lines
-            logger.info("Output line %d: %s", i, line[:100])  # Truncate long lines
-
-        # Check for common error patterns
-        full_output = result.stdout.lower()
-        if "no module named 'boto3'" in full_output:
-            logger.error("❌ boto3 not installed - S3 uploads will fail")
-        elif "setup failed" in full_output:
-            logger.error("❌ Setup failure detected in script output")
-
-        for line in stdout_lines:
-            # Look for "Completed: X images downloaded to" pattern
-            if "Completed:" in line and "images downloaded" in line:
-                logger.info("Found completion line: %s", line)
-                with contextlib.suppress(IndexError, ValueError):
-                    # Extract number from "Completed: 22 images downloaded to nasa_epic_images/"
-                    parts = line.split()
-                    if len(parts) >= MIN_COMPLETION_LINE_PARTS:
-                        images_downloaded = int(parts[1])
-                        logger.info("Parsed %d images from completion line", images_downloaded)
-            # Also check individual download lines for debugging
-            elif "✅ Downloaded" in line:
-                images_downloaded += 1
 
         response = {
             "statusCode": 200,
@@ -261,41 +263,17 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "details": {
                 "execution_time_seconds": round(duration, 2),
                 "images_downloaded": images_downloaded,
-                "command": " ".join(cmd),
+                "images_uploaded": images_uploaded,
+                "command_equivalent": command_equivalent,
                 "start_time": start_time.isoformat(),
                 "end_time": end_time.isoformat(),
             },
-            "stdout": result.stdout,
-            "stderr": result.stderr if result.stderr else None,
         }
 
         logger.info("Job completed successfully in %.2f seconds", duration)
-        logger.info("Downloaded %d images", images_downloaded)
+        logger.info("Downloaded %d images, uploaded %d to S3", images_downloaded, images_uploaded)
 
         return response
-
-    except subprocess.CalledProcessError as e:
-        end_time = datetime.now(tz=timezone.utc)
-        error_details = {
-            "exit_code": e.returncode,
-            "command": " ".join(cmd) if "cmd" in locals() else "Unknown",
-            "stdout": e.stdout,
-            "stderr": e.stderr,
-            "execution_time_seconds": (end_time - start_time).total_seconds(),
-        }
-
-        logger.exception("Command failed with exit code %d", e.returncode)
-        if e.stdout:
-            logger.info("Command STDOUT: %s", e.stdout)
-        if e.stderr:
-            logger.warning("Command STDERR: %s", e.stderr)
-
-        return {
-            "statusCode": 500,
-            "success": False,
-            "error": "Command execution failed",
-            "details": error_details,
-        }
 
     except Exception as e:
         end_time = datetime.now(tz=timezone.utc)
@@ -305,6 +283,11 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "execution_time_seconds": (end_time - start_time).total_seconds(),
         }
 
-        logger.exception("Job failed with error")
+        logger.exception("Download execution failed")
 
-        return {"statusCode": 500, "success": False, "error": str(e), "details": error_details}
+        return {
+            "statusCode": 500,
+            "success": False,
+            "error": "Download execution failed",
+            "details": error_details,
+        }

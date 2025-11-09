@@ -1,23 +1,137 @@
 # NASA EPIC API Client
 
-A Python client for NASA's Earth Polychromatic Imaging Camera (EPIC) API.
+A Python client for NASA's Earth Polychromatic Imaging Camera (EPIC) API with professional CLI tools and AWS Lambda integration.
 
-## 🎓 AWS Lambda Demo
+## 🚀 CLI Tools
 
-This repository includes a complete educational demo showing how to deploy the EPIC API client as a serverless AWS Lambda function:
+The package includes professional command-line tools for downloading NASA EPIC imagery:
 
-### **Demo Materials**
-- 📖 `CONSOLE_SETUP_GUIDE.md` - Step-by-step AWS Console setup
-- 🎯 `DEMO_CHECKLIST.md` - Live demo script with timing and talking points
-- 📚 `DEMO_OVERVIEW.md` - Complete learning objectives and takeaways
-- 🛠 `get_image_uri.sh` - Helper to get ECR image URI for Lambda setup
+### Installation & Setup
 
-### **Quick Demo Start**
-1. Push code to `main` branch (triggers automatic Docker build)
-2. Run `./get_image_uri.sh` to get the ECR image URI
-3. Follow `DEMO_CHECKLIST.md` for live AWS Console demonstration
+```bash
+# Install the package (includes CLI tools)
+pip install -e .
 
-Perfect for cloud computing and serverless architecture courses! 🚀
+# Verify CLI tools are available
+epic --help
+epic-images --help
+epic-metadata --help
+```
+
+### Quick Start
+
+```bash
+# Download yesterday's natural images locally
+epic-images --local-only
+
+# Download specific date to S3
+epic-images --date 2024-11-01 --bucket my-bucket
+
+# Get image metadata for yesterday
+epic-metadata
+
+# Download enhanced images to custom local directory
+epic-images --date 2024-11-01 --collection enhanced --local-dir ./my_images --local-only
+```
+
+### CLI Commands
+
+#### `epic-images` - Download NASA EPIC Images
+Download NASA EPIC images with flexible options for date, collection type, and storage.
+
+```bash
+# Basic usage (downloads yesterday's natural images locally)
+epic-images --local-only
+
+# Specific date and collection (local download)
+epic-images --date 2024-01-15 --collection enhanced --local-only
+
+# Upload to S3 bucket
+epic-images --date 2024-01-15 --bucket my-epic-bucket
+
+# Custom local directory
+epic-images --date 2024-01-15 --local-dir ./epic_data --local-only
+
+# S3 upload with custom local directory (then upload)
+epic-images --date 2024-01-15 --collection aerosol --bucket my-bucket --local-dir ./epic
+```
+
+**Options:**
+- `--date` (YYYY-MM-DD): Date to download, defaults to yesterday
+- `--collection`: Image type (`natural`, `enhanced`, `aerosol`, `cloud`)
+- `--bucket`: S3 bucket for upload (optional)
+- `--local-dir`: Local directory (default: `nasa_epic_images`)
+- `--local-only`: Download only, skip S3 upload
+
+#### `epic-metadata` - Get Image Metadata
+Retrieve metadata for NASA EPIC images without downloading.
+
+```bash
+# Get yesterday's natural image metadata
+epic-metadata
+
+# Specific date and collection
+epic-metadata --date 2024-01-15 --collection enhanced
+
+# All available options
+epic-metadata --date 2024-01-15 --collection aerosol
+```
+
+**Options:**
+- `--date` (YYYY-MM-DD): Date for metadata, defaults to yesterday
+- `--collection`: Image type (`natural`, `enhanced`, `aerosol`, `cloud`)
+
+#### `epic` - Main Command Group
+Access all NASA EPIC CLI tools through a unified interface.
+
+```bash
+# Show all available commands
+epic --help
+
+# Download images (same as epic-images)
+epic download-images --date 2024-01-15 --bucket my-bucket
+
+# Get metadata (same as epic-metadata)
+epic get-metadata --date 2024-01-15 --collection enhanced
+
+# Check version
+epic --version
+```
+
+### CLI Features
+
+- **Rich Terminal Output**: Beautiful tables and progress indicators using Rich library
+- **Date Range Support**: Easy date specification with sensible defaults
+- **Multiple Entry Points**: Use `epic`, `epic-images`, or `epic-metadata` commands
+- **S3 Integration**: Direct upload to AWS S3 with organized folder structure
+- **Error Handling**: Comprehensive error messages and validation
+- **Flexible Storage**: Local-only mode or S3 upload with optional local retention
+
+> **📅 Date Availability**: NASA EPIC images are available for recent dates (typically last few months). For testing, use recent dates like `2024-11-01` or omit `--date` to get yesterday's images automatically.
+
+### CLI Examples
+
+```bash
+# Education: Download a week of natural images for analysis
+for date in 2024-01-{15..21}; do
+  epic-images --date $date --local-dir ./weekly_data --local-only
+done
+
+# Production: Automated daily S3 archival (yesterday's images)
+epic-images --bucket nasa-epic-archive --collection natural
+
+# Research: Compare different image types for same date
+epic-images --date 2024-01-15 --collection natural --local-only
+epic-images --date 2024-01-15 --collection enhanced --local-only
+epic-images --date 2024-01-15 --collection aerosol --local-only
+
+# Metadata analysis: Get image info before downloading
+epic-metadata --date 2024-01-15 --collection natural > metadata.json
+```
+
+## 🎓 AWS Lambda Integration
+
+The package includes full AWS Lambda support for serverless deployment:
 
 ## Versioning
 
@@ -36,29 +150,66 @@ git push origin v1.2.3
 ## Project Structure
 
 ```
-src/
-├── earth_polychromatic_api/    # Main API client package
-│   ├── __init__.py
-│   └── client.py              # EpicApiClient class
-└── tests/                     # Test suite
-    ├── __init__.py
-    ├── test_epic_api.py       # Comprehensive unit tests
-    └── test_datasets/         # Mock API response data
-        ├── natural_recent_response.json
-        ├── enhanced_date_response.json
-        ├── natural_all_dates_response.json
-        ├── aerosol_recent_response.json
-        ├── cloud_recent_response.json
-        ├── enhanced_all_dates_response.json
-        ├── aerosol_all_dates_response.json
-        └── cloud_all_dates_response.json
+earth-polychromatic-imaging-camera-api/
+├── .github/workflows/
+│   └── ci-cd.yml              # GitHub Actions CI/CD pipeline
+├── src/
+│   ├── earth_polychromatic_api/   # Main API package
+│   │   ├── __init__.py           # Package initialization
+│   │   ├── _version.py           # Auto-versioning with hatch-vcs
+│   │   ├── cli.py               # Professional CLI tools
+│   │   ├── client.py            # NASA EPIC API client
+│   │   ├── models.py            # Pydantic data models
+│   │   └── service.py           # Typed service layer
+│   └── tests/                   # Comprehensive test suite
+│       ├── __init__.py
+│       ├── test_cli.py          # CLI tool unit tests
+│       ├── test_epic_api.py     # API client tests
+│       ├── test_lambda_basic.py # Lambda handler tests
+│       ├── test_typed_methods.py # Typed service tests
+│       └── test_datasets/       # Mock API response data
+│           ├── natural_recent_response.json
+│           ├── enhanced_date_response.json
+│           ├── natural_all_dates_response.json
+│           ├── aerosol_recent_response.json
+│           ├── cloud_recent_response.json
+│           ├── enhanced_all_dates_response.json
+│           └── aerosol_all_dates_response.json
+├── Dockerfile.lambda            # AWS Lambda container
+├── lambda_handler.py           # AWS Lambda entry point
+├── pyproject.toml             # Package config + CLI entry points
+├── conftest.py                # Pytest configuration
+├── LICENSE                    # MIT License
+└── README.md                  # This file
 ```
 
 ## Installation
 
-Install the test dependencies:
+### For Users (CLI Tools + API Client)
 ```bash
+# Install the package with CLI tools
+pip install -e .
+
+# Verify installation
+epic --version
+epic --help
+```
+
+### For Development
+```bash
+# Install with test dependencies
 pip install -r requirements-test.txt
+pip install -e .
+```
+
+### Package Building
+```bash
+# Build distribution packages
+python -m build
+
+# The package uses hatch-vcs for automatic versioning:
+# - Release versions from Git tags (v1.2.3 → 1.2.3)
+# - Development versions with commit info (1.2.3.post4+g1a2b3c4)
 ```
 
 ## Running Tests
@@ -83,46 +234,9 @@ Run with coverage:
 pytest --cov=earth_polychromatic_api
 ```
 
-## Endpoint Verification
-
-The `verify_endpoints.py` script provides a comprehensive test of all API endpoints against the live NASA EPIC service. This is useful for:
-
-- Verifying API connectivity and functionality
-- Testing all endpoint types (natural, enhanced, aerosol, cloud)
-- Validating Pydantic model parsing with real data
-- Checking image URL construction
-- Confirming service layer functionality
-
-Run the verification script:
-```bash
-python verify_endpoints.py
-```
-
-The script will test:
-- ✅ All 4 image collection types (natural, enhanced, aerosol, cloud)
-- ✅ Recent images, date-specific images, and available dates endpoints
-- ✅ Raw client methods and typed service methods
-- ✅ Pydantic model validation and collection methods
-- ✅ Image URL construction for different formats
-
-Example output:
-```
-============================================================
- NASA EPIC API Endpoint Verification
-============================================================
-ℹ️  This script will test all service endpoints...
-✅ Service initialized successfully
-✅ Found 13 recent natural images
-✅ Found 12 natural images for 2023-10-15
-✅ Found 150+ available dates for natural images
-...
-Overall Results: 6/6 tests passed
-✅ 🎉 All endpoints are working correctly!
-```
-
 ## AWS Lambda Handler
 
-The `lambda_handler.py` provides a serverless AWS Lambda function that wraps the `epic_s3_downloader.py` script for cloud-based image processing. This enables:
+The `lambda_handler.py` provides a serverless AWS Lambda function that uses the CLI package directly for cloud-based image processing. This enables:
 
 - **Serverless Image Downloads**: Trigger NASA EPIC downloads via Lambda events
 - **Flexible Date Parameters**: Multiple ways to specify date ranges with clear priority
@@ -192,7 +306,7 @@ The Lambda handler uses a 4-tier priority system for date parameters to eliminat
   "details": {
     "execution_time_seconds": 45.67,
     "images_downloaded": 12,
-    "command": "python epic_s3_downloader.py ...",
+    "command_equivalent": "epic-images --date 2024-01-01 ...",
     "start_time": "2024-01-01T10:00:00Z",
     "end_time": "2024-01-01T10:00:45Z"
   },
@@ -200,81 +314,6 @@ The Lambda handler uses a 4-tier priority system for date parameters to eliminat
   "stderr": null
 }
 ```
-
-## NASA EPIC to S3 Download Script
-
-The `epic_s3_downloader.py` script provides a simple way to download NASA EPIC images for specified date ranges and upload them directly to AWS S3. This is useful for:
-
-- Building archives of Earth imagery
-- Creating datasets for analysis or machine learning
-- Automated data pipeline integration
-- Bulk downloading historical imagery
-
-### Usage
-
-```bash
-# Download images locally only (no S3 upload)
-python epic_s3_downloader.py --start-date 2023-10-01 --end-date 2023-10-31 --local-only
-
-# Download natural color images to S3
-python epic_s3_downloader.py --start-date 2023-10-01 --end-date 2023-10-31 --bucket my-epic-bucket
-
-# Download enhanced images for a single day
-python epic_s3_downloader.py --start-date 2023-10-15 --end-date 2023-10-15 --bucket my-bucket --collection enhanced
-
-# Keep local copies after uploading to S3
-python epic_s3_downloader.py --start-date 2023-10-15 --end-date 2023-10-15 --bucket my-bucket --keep-local
-
-# Specify custom local directory
-python epic_s3_downloader.py --start-date 2023-10-15 --end-date 2023-10-15 --local-only --local-dir ./my_epic_images
-```
-
-### Requirements
-
-```bash
-pip install requests           # Always required
-pip install boto3             # Only needed for S3 uploads
-```
-
-### AWS Configuration
-
-Configure AWS credentials using any standard method:
-- `aws configure` (recommended)
-- Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`
-- IAM roles (when running on EC2)
-- AWS profiles
-
-### Directory Structure
-
-Images are organized locally and in S3 with the following structure:
-```
-# Local structure (default: ./nasa_epic_images/)
-./nasa_epic_images/
-├── natural/2023/10/15/epic_1b_20231015123456.png
-├── enhanced/2023/10/15/epic_1b_20231015123456.png
-├── aerosol/2023/10/15/epic_1b_20231015123456.png
-└── cloud/2023/10/15/epic_1b_20231015123456.png
-
-# S3 structure (when uploading to S3)
-s3://your-bucket/nasa-epic/
-├── natural/2023/10/15/epic_1b_20231015123456.png
-├── enhanced/2023/10/15/epic_1b_20231015123456.png
-├── aerosol/2023/10/15/epic_1b_20231015123456.png
-└── cloud/2023/10/15/epic_1b_20231015123456.png
-```
-
-### Options
-
-- `--start-date` / `--end-date`: Date range in YYYY-MM-DD format
-- `--local-only`: Download images locally only (no S3 upload)
-- `--bucket`: S3 bucket name (required for S3 upload, ignored if `--local-only`)
-- `--collection`: Image type (`natural`, `enhanced`, `aerosol`, `cloud`) - default: `natural`
-- `--local-dir`: Local download directory - default: `./nasa_epic_images`
-- `--keep-local`: Keep local files after S3 upload (ignored if `--local-only`)
-
-### Error Handling
-
-The script continues processing if individual images fail to download or upload, providing status for each operation. Failed downloads are logged but don't stop the overall process.
 
 ## API Endpoints Covered
 

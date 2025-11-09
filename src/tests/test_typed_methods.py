@@ -22,8 +22,8 @@ from earth_polychromatic_api.models import (
 )
 from earth_polychromatic_api.service import EpicApiService
 
-# Test data paths
-TEST_DATA_DIR = Path(__file__).parent.parent.parent / "test_datasets"
+# Paths
+TEST_DATA_DIR = Path(__file__).parent / "test_datasets"
 
 
 @pytest.fixture
