@@ -160,8 +160,8 @@ class TestMainCommand:
         # Assert
         assert result.exit_code == 0
         assert "NASA EPIC API command-line tools" in result.output
-        assert "download-images" in result.output
-        assert "get-metadata" in result.output
+        assert "images" in result.output
+        assert "metadata" in result.output
 
     def test_main_version_command(self, cli_runner):
         """Test version flag displays version information.
@@ -580,8 +580,8 @@ class TestCLIIntegration:
         """
         # Arrange & Act
         main_help = cli_runner.invoke(main, ["--help"])
-        download_help = cli_runner.invoke(main, ["download-images", "--help"])
-        metadata_help = cli_runner.invoke(main, ["get-metadata", "--help"])
+        download_help = cli_runner.invoke(main, ["images", "--help"])
+        metadata_help = cli_runner.invoke(main, ["metadata", "--help"])
 
         # Assert
         assert main_help.exit_code == 0

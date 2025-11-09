@@ -51,7 +51,7 @@ def main() -> None:
     """NASA EPIC API command-line tools."""
 
 
-@main.command()
+@main.command("images")
 @click.option("--date", help="Date (YYYY-MM-DD), defaults to yesterday")
 @click.option(
     "--collection",
@@ -157,7 +157,7 @@ def download_images(
         console.print(f"📤 Uploaded {uploaded} images to S3")
 
 
-@main.command()
+@main.command("metadata")
 @click.option("--date", help="Date (YYYY-MM-DD), defaults to yesterday")
 @click.option(
     "--collection",
