@@ -210,7 +210,7 @@ jobs:
           # Test if Lambda runtime is responding (it should be waiting for requests)
           # We'll check if the container started successfully by checking logs
           LOGS=$(docker logs $CONTAINER_ID 2>&1)
-          
+
           if echo "$LOGS" | grep -q "exec '/var/runtime/bootstrap'"; then
             echo "✅ Lambda runtime started successfully"
           else
