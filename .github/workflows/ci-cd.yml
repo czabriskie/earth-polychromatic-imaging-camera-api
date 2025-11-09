@@ -288,7 +288,7 @@ jobs:
               print(f'❌ CLI not installed properly: {result.stderr}')
               exit(1)
 
-          if 'NASA EPIC API' not in result.stdout:
+          if 'NASA EPIC' not in result.stdout or 'Download' not in result.stdout:
               print(f'❌ CLI help output unexpected: {result.stdout}')
               exit(1)
 
